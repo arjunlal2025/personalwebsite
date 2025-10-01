@@ -231,3 +231,23 @@ jobs:
       if: success()
       run: |
         echo "Reading update completed successfully. Azure deployment will be triggered by the push to main."
+
+  deploy-to-azure:
+      needs: update-reading
+      if: success()
+      runs-on: ubuntu-latest
+      name: Deploy to Azure Static Web Apps
+      steps:
+        - uses: actions/checkout@v3
+          with:
+            submodules: true
+        - name: Build And Deploy
+          id: builddeploy
+          uses: Azure/static-web-apps-deploy@v1
+          with:
+            azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_GENTLE_WAVE_04C779210 }}
+            repo_token: ${{ secrets.GITHUB_TOKEN }}
+            action: "upload"
+            app_location: "/"
+            api_location: ""
+            output_location: "/"
