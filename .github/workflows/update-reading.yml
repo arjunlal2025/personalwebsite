@@ -1,0 +1,225 @@
+name: Update Currently Reading
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC (adjust timezone as needed)
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-reading:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4
+    
+    - name: Update reading section
+      run: |
+        python << 'EOF'
+        #!/usr/bin/env python3
+        """
+        Update the reading section in index.html with currently reading books from Goodreads
+        """
+        
+        import requests
+        from bs4 import BeautifulSoup
+        import re
+        import time
+        from typing import List, Dict, Optional
+        
+        class GoodreadsScraper:
+            def __init__(self):
+                self.session = requests.Session()
+                self.session.headers.update({
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                })
+                self.base_url = "https://www.goodreads.com"
+                
+            def get_currently_reading_url(self, username: str, page: int = 1) -> str:
+                """Generate the currently reading books URL for a given username and page."""
+                return f"{self.base_url}/review/list/{username}?shelf=currently-reading&page={page}"
+            
+            def scrape_currently_reading(self, username: str, max_pages: int = 5) -> List[Dict]:
+                """Scrape currently reading books from the user's profile."""
+                books = []
+                page = 1
+                
+                print(f"Scraping currently reading books for user: {username}")
+                
+                while page <= max_pages:
+                    try:
+                        books_url = self.get_currently_reading_url(username, page)
+                        response = self.session.get(books_url)
+                        response.raise_for_status()
+                        
+                        soup = BeautifulSoup(response.content, 'html.parser')
+                        
+                        # Look for table rows with class 'bookalike'
+                        book_entries = soup.find_all('tr', class_='bookalike')
+                        
+                        if not book_entries:
+                            # Try alternative selectors
+                            all_rows = soup.find_all('tr')
+                            for row in all_rows:
+                                if row.find('a', href=re.compile(r'/book/show/')):
+                                    book_entries.append(row)
+                        
+                        if not book_entries:
+                            break
+                        
+                        page_books = []
+                        for entry in book_entries:
+                            book_info = self._extract_book_info(entry)
+                            if book_info:
+                                page_books.append(book_info)
+                        
+                        if not page_books:
+                            break
+                        
+                        books.extend(page_books)
+                        print(f"Found {len(page_books)} currently reading books on page {page}")
+                        
+                        # Check if there's a next page
+                        next_link = soup.find('a', class_='next_page')
+                        if not next_link:
+                            break
+                        
+                        page += 1
+                        time.sleep(1)  # Be respectful with requests
+                        
+                    except requests.RequestException as e:
+                        print(f"Error scraping currently reading page {page}: {e}")
+                        break
+                
+                print(f"Total currently reading books scraped: {len(books)}")
+                return books
+            
+            def _extract_book_info(self, book_entry) -> Optional[Dict]:
+                """Extract book information from a book entry."""
+                try:
+                    book_info = {}
+                    
+                    # Get book title
+                    title_elem = book_entry.find('td', class_='field title')
+                    if title_elem:
+                        title_link = title_elem.find('a')
+                        if title_link:
+                            book_info['title'] = title_link.get_text(strip=True)
+                    
+                    # Get author
+                    author_elem = book_entry.find('td', class_='field author')
+                    if author_elem:
+                        author_link = author_elem.find('a')
+                        if author_link:
+                            book_info['author'] = author_link.get_text(strip=True)
+                    
+                    # Get publish date
+                    pub_date_elem = book_entry.find('td', class_='field date_pub')
+                    if pub_date_elem:
+                        pub_date_value = pub_date_elem.find('div', class_='value')
+                        if pub_date_value:
+                            pub_date_text = pub_date_value.get_text(strip=True)
+                            if pub_date_text and pub_date_text != 'None':
+                                # Extract year from date like "Mar 26, 1920"
+                                year_match = re.search(r'(\d{4})', pub_date_text)
+                                if year_match:
+                                    book_info['publish_date'] = year_match.group(1)
+                                else:
+                                    book_info['publish_date'] = pub_date_text
+                    
+                    return book_info if book_info.get('title') else None
+                    
+                except Exception as e:
+                    print(f"Error extracting book info: {e}")
+                    return None
+        
+        def update_reading_section():
+            """Update the reading section in index.html with currently reading books."""
+            # Your Goodreads user ID
+            username = "137209654"
+            
+            # Scrape currently reading books
+            scraper = GoodreadsScraper()
+            currently_reading = scraper.scrape_currently_reading(username)
+            
+            if not currently_reading:
+                print("No currently reading books found")
+                return
+            
+            # Read the current index.html
+            with open('index.html', 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Parse the HTML
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Find the reading section
+            reading_section = soup.find('ul', id='reading')
+            if not reading_section:
+                print("Reading section not found in index.html")
+                return
+            
+            # Find the ul with books inside the reading section
+            books_ul = reading_section.find('ul', class_='text-md')
+            if not books_ul:
+                print("Books ul not found in reading section")
+                return
+            
+            # Clear existing books
+            books_ul.clear()
+            
+            # Add new books
+            for book in currently_reading:
+                li = soup.new_tag('li')
+                
+                # Title
+                title_p = soup.new_tag('p')
+                title_p.string = book.get('title', 'Unknown Title')
+                li.append(title_p)
+                
+                # Author and year
+                author_p = soup.new_tag('p', **{'class': 'text-sm opacity-40', 'style': 'padding-bottom: 6px;'})
+                author_text = book.get('author', 'Unknown Author')
+                if book.get('publish_date'):
+                    author_text += f'   <span class="opacity-60">({book["publish_date"]})</span>'
+                author_p.append(BeautifulSoup(author_text, 'html.parser'))
+                li.append(author_p)
+                
+                books_ul.append(li)
+            
+            # Write the updated HTML back to file
+            with open('index.html', 'w', encoding='utf-8') as f:
+                f.write(str(soup))
+            
+            print(f"Updated reading section with {len(currently_reading)} currently reading books:")
+            for book in currently_reading:
+                print(f"  - {book.get('title', 'Unknown')} by {book.get('author', 'Unknown')}")
+        
+        if __name__ == "__main__":
+            update_reading_section()
+        EOF
+    
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add index.html
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "Update currently reading books [automated]"
+          git push
+        fi
