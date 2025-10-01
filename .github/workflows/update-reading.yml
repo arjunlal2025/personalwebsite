@@ -15,6 +15,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -221,5 +222,12 @@ jobs:
           echo "No changes to commit"
         else
           git commit -m "Update currently reading books [automated]"
-          git push
+          git push origin HEAD:main
         fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Trigger Azure deployment
+      if: success()
+      run: |
+        echo "Reading update completed successfully. Azure deployment will be triggered by the push to main."
