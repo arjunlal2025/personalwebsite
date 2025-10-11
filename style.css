@@ -1,0 +1,107 @@
+/* Custom styles for Hank Hayes personal website */
+
+/* Base styles with inverted colors */
+body {
+    background-color: #000000; /* Black background */
+    color: #ffffff; /* White text */
+}
+
+/* Override Tailwind's default dark mode classes to ensure black background */
+.bg-white {
+    background-color: #000000 !important;
+}
+
+.bg-black {
+    background-color: #000000 !important;
+}
+
+.text-black {
+    color: #ffffff !important;
+}
+
+.text-white {
+    color: #ffffff !important;
+}
+
+/* Border colors - make them white on black background */
+.border-neutral-100 {
+    border-color: #ffffff !important;
+}
+
+.border-neutral-800 {
+    border-color: #ffffff !important;
+}
+
+/* Background colors for cards and sections */
+.bg-neutral-50 {
+    background-color: #1a1a1a !important; /* Dark gray instead of light gray */
+}
+
+.bg-neutral-900 {
+    background-color: #1a1a1a !important; /* Dark gray */
+}
+
+.bg-neutral-300 {
+    background-color: #404040 !important; /* Medium gray for code blocks */
+}
+
+.bg-neutral-700 {
+    background-color: #404040 !important; /* Medium gray for code blocks */
+}
+
+/* SVG fill colors - make them white */
+.fill-black {
+    fill: #ffffff !important;
+}
+
+.fill-white {
+    fill: #ffffff !important;
+}
+
+/* Scrollbar styles */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+    /* Hide scrollbar for Chrome, Safari, and newer Edge */
+}
+
+.no-scrollbar {
+    scrollbar-width: none;
+    /* Hide scrollbar for Firefox */
+}
+
+::-webkit-scrollbar {
+    width: 0em;
+}
+
+/* Code block styling */
+code {
+    font-family: Consolas, "courier new";
+    border-radius: 5px;
+    padding: 1px;
+    background-color: #404040 !important;
+    color: #ffffff !important;
+}
+
+/* Link colors - make them visible on black background */
+a {
+    color: #ffffff !important;
+    text-decoration: underline;
+}
+
+a:hover {
+    color: #cccccc !important;
+}
+
+/* Ensure all text is visible on black background */
+h1, h2, h3, h4, h5, h6, p, li, span, div {
+    color: #ffffff !important;
+}
+
+/* Opacity adjustments for better contrast */
+.opacity-40 {
+    opacity: 0.6 !important; /* Increase opacity for better visibility */
+}
+
+.opacity-60 {
+    opacity: 0.8 !important; /* Increase opacity for better visibility */
+}
